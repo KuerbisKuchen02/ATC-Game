@@ -1,0 +1,104 @@
+
+Parser Regeln:
+EXPRESSION  := GREETING? EXP_START GREETING? (CLEARANCE|HOLD_EXP|CONT_TAXI|ABORT_TO|LINE_UP_EXP|GO_AROUND)
+
+HOLD_EXP    :=  HOLD (SHORT RUNWAY|POSITION)
+LINE_UP_EXP :=  LINE_UP WAIT? RUNWAY
+CONT_TAXI   :=  CONTINUE TAXI
+ABORT_TO    :=  ABORT TAKEOFF
+CLEARANCE   :=  CLR (TAKEOFF_CLR|CROSS_CLR|LANDING_CLR) | CLR? TAKI_CLR
+CLR         :=  CLEAR PREPOSITION?
+TAKEOFF_CLR :=  TAKEOFF RUNWAY WIND?
+LANDING_CLR :=  LAND PREPOSITION? RUNWAY
+TAXI_CLR    :=  TAXI PREPOSITION? (RUNWAY|GATE) (VIA TAXIWAYS)?
+CROSS_CLR   :=  CROSS RUNWAY
+EXP_START   :=  FLIGHT? CALLSIGN
+TAXIWAYS    :=  TAXIWAY+
+
+
+Lexer Regeln:
+ABORT       :=  abort
+CONTINUE    :=  continue
+CROSS       :=  cross
+FLIGHT      :=  flight
+HOLD        :=  hold
+LAND        :=  land
+POS         :=  position
+PUSHBACK    :=  pushback
+SHORT       :=  short
+TAKEOFF     :=  takeoff
+TAXI        :=  taxi
+VIA         :=  via
+WAIT        :=  wait
+
+CLEAR       :=  clear(ed)?
+GO_AROUND   :=  go around
+GREETING    :=  good (morning|afternoon|evening)
+LINE_UP     :=  line up
+PREPOSITION :=  to | for
+
+CALLSIGN    :=  \w{2,3}\d{1,4} (heavy)?
+HEIGHT      :=  \d+ (feet)? | flight level \d{2,3}
+HEADING     :=  (heading)? \d{3} (true)?
+WIND        :=  wind \d{3}
+SPEED       :=  \d+ {knots}? | mach \d\.\d{1,2}
+RUNWAY      :=  (runway)? \d{2} (left|right|center)?
+TAXIWAY     :=  \w
+GATE        :=  (gate)? \w\d+
+
+
+===========
+ANTL-Syntax
+===========
+
+expression  : GREETING? exp_start GREETING? (clearance|hold_exp|cont_taxi|abort_to|line_up_exp|GO_AROUND|taxi_clr);
+
+hold_exp    :  HOLD (SHORT RUNWAY|POSITION);
+line_up_exp :  LINE_UP WAIT? RUNWAY;
+cont_taxi   :  CONTINUE TAXI;
+abort_to    :  ABORT TAKEOFF;
+clearance   :  CLEAR PREPOSITION? (takeoff_clr|cross_clr|landing_clr);
+takeoff_clr :  TAKEOFF RUNWAY WIND?;
+landing_clr :  LAND PREPOSITION? RUNWAY;
+taxi_clr    :  TAXI PREPOSITION? (RUNWAY|GATE) (VIA taxiways)?;
+cross_clr   :  CROSS RUNWAY;
+exp_start   :  FLIGHT? CALLSIGN;
+taxiways    :  TAXIWAY+;
+
+ABORT       :  "abort";
+CALLSIGN    :  WORD{2,3} DIGIT{1,4} ("heavy")?;
+CLEAR       :  "clear"("ed")?;
+CONTINUE    :  "continue";
+CROSS       :  "cross";
+DIGIT       :  "0".."9";
+FLIGHT      :  "flight";
+GATE        :  ("gate")? WORD DIGIT+;
+GO_AROUND   :  "go around";
+GREETING    :  "good" ("morning"|"afternoon"|"evening");
+HEADING     :  ("heading")? DIGIT{3} ("true")?;
+HEIGHT      :  DIGIT+ ("feet")? | "flight level" DIGIT{2,3};
+HOLD        :  "hold";
+LAND        :  "land";
+LINE_UP     :  "line up";
+NEWLINE     :  "\r"? "\n";
+POS         :  "position";
+PREPOSITION :  "to" | "for";
+PUSHBACK    :  "pushback";
+RUNWAY      :  (runway)? DIGIT{2} ("left"|"right"|"center")?;
+SHORT       :  "short";
+SPEED       :  DIGIT+ ("knots")? | "mach" DIGIT"."DIGIT{1,2};
+TAXI        :  "taxi";
+TAXIWAY     :  WORD;
+TAKEOFF     :  "takeoff";
+VIA         :  "via";
+WAIT        :  "wait";
+WIND        :  wind DIGIT{3};
+WORD        :  "a".."z";
+WS          :  (" " | "\t")+;
+
+
+Command:
+Flight LH4713 good morning cleared to land runway 18L
+
+Actually:
+Lufthansa 4713 good morning clear to land run by 18 left
