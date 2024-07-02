@@ -1,6 +1,7 @@
 import pygame
 
 from aircraft import Aircraft, Status
+from airport import Airport
 
 
 def game():
@@ -15,11 +16,13 @@ def game():
     screen.blit(background, (0, 0))
     pygame.display.flip()
 
+    airport = Airport(background, "Rocky Mountain Regional", [], [], [])
+
     aircraft = pygame.sprite.Group()
     aircraft.add(Aircraft(
         "LH1234",
-        (100, (screen.get_height() - 50)*10),
-        45,
+        (0, 1930),
+        90,
         0,
         0,
         Status.PARKED))
