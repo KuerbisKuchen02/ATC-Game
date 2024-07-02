@@ -24,37 +24,9 @@ class Iterator:
 
 
 class TokenType(Enum):
-    EOF = 0
-    ABORT = 1
-    CALLSIGN = 2
-    CLEAR = 3
-    CONTINUE = 4
-    CROSS = 5
-    FLIGHT = 6
-    GATE = 7
-    GO_AROUND = 8
-    GREETING = 9
-    HEADING = 10
-    HEIGHT = 11
-    HOLD = 12
-    LAND = 13
-    LINE_UP = 14
-    NEWLINE = 15
-    NUMBER = 16
-    POS = 17
-    PREPOSITION = 18
-    PUSHBACK = 19
-    RUNWAY = 20
-    SHORT = 21
-    SPEED = 22
-    TAXI = 23
-    TAXIWAY = 24
-    TAKEOFF = 25
-    VIA = 26
-    WAIT = 27
-    WIND = 28
-    WORD = 29
-    WS = 30
+    (EOF, ABORT, CALLSIGN, CLEAR, CONTINUE, CROSS, FLIGHT, GATE, GO_AROUND, GREETING, HEADING, HEIGHT, HOLD, LAND,
+     LINE_UP, NEWLINE, NUMBER, POS, PREPOSITION, PUSHBACK, RUNWAY, SHORT, SPEED, TAXI, TAXIWAY, TAKEOFF, VIA, WAIT,
+     WIND, WORD, WS) = range(31)
 
 
 class Token:
