@@ -20,7 +20,10 @@ class Parser:
         self.lookahead = next(self.input)
 
     def valid(self):
-        self.expression()
+        ret = self.expression()
+        if self.lookahead.token_type is not TokenType.EOF:
+            raise RuntimeError("Parsing exception. Expected EOF, but was %s" % self.lookahead)
+        return ret
 
     def expression(self) -> (str, Instruction):
         if self.lookahead.token_type == TokenType.GREETING:

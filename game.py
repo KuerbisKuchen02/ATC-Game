@@ -28,6 +28,12 @@ def input_handler():
         print("Could not request results from Google Speech Recognition service; {0}".format(e))
 
 
+def text_input_handler():
+    input_str = input("Command: ")
+    parser = Parser(Lexer(input_str))
+    instructions.put(parser.valid())
+
+
 def game():
     # pygame setup
     pygame.init()
@@ -46,9 +52,19 @@ def game():
     background.blit(font_object, (50, 50))
 
     aircraft = pygame.sprite.Group()
+    # noinspection PyTypeChecker
     aircraft.add(AiAircraft(
         "LH1234",
         (500, 400),
+        180,
+        0,
+        0,
+        Status.READY_FOR_PUSHBACK,
+        airport))
+    # noinspection PyTypeChecker
+    aircraft.add(AiAircraft(
+        "LH2",
+        (550, 400),
         180,
         0,
         0,
@@ -71,7 +87,20 @@ def game():
                 running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_m:
                 threading.Thread(target=input_handler, daemon=True).start()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_n:
+                threading.Thread(target=text_input_handler, daemon=True).start()
 
+        while instructions.not_empty:
+            try:
+                callsign, instruction = instructions.get_nowait()
+            except queue.Empty:
+                break
+            for a in aircraft:
+                a: AiAircraft
+                if a.callsign == callsign:
+                    a.set_instruction(instruction)
+                    instructions.task_done()
+                    break
         screen.blit(background, (0, 0))
         aircraft.update(dt)
         for a in aircraft:

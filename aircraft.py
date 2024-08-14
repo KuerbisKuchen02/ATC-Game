@@ -125,7 +125,6 @@ class AiAircraft(Aircraft):
         super().update(dt)
 
         if self._check_goal():
-            print("Goal reached")
             match self._status:
                 case Status.PUSHBACK_1:
                     self._status = Status.PUSHBACK_2
@@ -154,6 +153,3 @@ class AiAircraft(Aircraft):
             pygame.draw.line(self.track, (0, 0, 255),
                              (self._goal[0] + 9, self._goal[1] + 9),
                              (self._position[0] + 9, self._position[1] + 9))
-
-
-

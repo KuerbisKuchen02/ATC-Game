@@ -69,7 +69,10 @@ class Lexer:
         return self
 
     def __next__(self):
-        return next(self.next_token())
+        try:
+            return next(self.next_token())
+        except StopIteration:
+            return Token(TokenType.EOF, None)
 
     def next_token(self):
         for word in self.iterator:
