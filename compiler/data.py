@@ -30,7 +30,7 @@ def index_airlines():
     global airlines
     if len(index) != 0:
         return
-    index = {airline.callsign.lower(): i for i, airline in airlines}
+    index = {airline.callsign.lower(): i for i, airline in enumerate(airlines)}
 
 
 def get_airline_from_callsign(callsign: str) -> Airline | None:
