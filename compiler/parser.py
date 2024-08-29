@@ -60,12 +60,13 @@ class Parser:
         if self.lookahead.token_type == TokenType.FLIGHT:
             self.match(TokenType.FLIGHT)
         while self.lookahead.token_type == TokenType.WORD:
-            ret += self.lookahead.value + " "
+            ret += self.lookahead.value.upper()
             self.match(TokenType.WORD)
-        airline: Airline = get_airline_from_callsign(ret.strip())
-        ret = airline.iata
-        if len(ret) == 0:
-            ret = airline.icao
+        airline: Airline = get_airline_from_callsign(ret)
+        if airline is not None:
+            ret = airline.iata
+            if len(ret) == 0:
+                ret = airline.icao
         ret += str(self.lookahead.value)
         self.match(TokenType.NUMBER)
         return ret

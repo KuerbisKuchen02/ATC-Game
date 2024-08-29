@@ -1,4 +1,5 @@
 import csv
+import random
 
 
 class Airline:
@@ -36,4 +37,13 @@ def index_airlines():
 def get_airline_from_callsign(callsign: str) -> Airline | None:
     load_airlines()
     index_airlines()
-    return airlines[index[callsign]]
+    i = index.get(callsign)
+    if i is None:
+        return None
+    return airlines[i]
+
+def get_random_callsign() -> str:
+    load_airlines()
+    index_airlines()
+    airline = airlines[index[random.choice(list(index))]]
+    return (airline.iata if len(airline.iata) != 0 else airline.icao) + str(random.randint(1, 9999))

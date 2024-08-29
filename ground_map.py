@@ -22,9 +22,22 @@ class GroundMap:
     def add_point(self, point: Waypoint):
         self._points[point.name] = point
 
+    def get_point(self, name: str) -> Waypoint | None:
+        return self._points.get(name, None)
+
     def draw(self, surface):
         for _, point in self._points.items():
             point.draw(surface)
+
+    def find_closest(self, postion: tuple[float, float]):
+        closest_point = None
+        closest_distance = float("inf")
+        for _, point in self._points.items():
+            manhattan_distance = abs(point.x - postion[0]) + abs(point.y - postion[1])
+            if manhattan_distance < closest_distance:
+                closest_distance = manhattan_distance
+                closest_point = point
+        return closest_point.name
 
     def manhattan_distance(self, point1_name: str, point2_name: str) -> int:
         point1 = self._points[point1_name]
@@ -59,8 +72,6 @@ class GroundMap:
         while point != start_point:
             path.append(point)
             point = previous_points[point]
+        path.append(start_point)
         path.reverse()
         return path
-
-
-

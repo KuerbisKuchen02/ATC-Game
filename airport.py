@@ -12,17 +12,35 @@ SIZE = 700
 
 
 # runway (name, length, orientation)
+class Gate:
+    def __init__(self, x: int, y: int, name: str):
+        self.x: int = x
+        self.y: int = y
+        self.name: str = name
+        self.text_box = draw_text_box(name)
+        self.is_occupied: bool = False
+
+    def get_spawn_point(self) -> tuple[int, int]:
+        return int(self.x + self.text_box.get_width() / 2), self.y - 10
+
 
 class Airport:
-    def __init__(self, surface: pygame.Surface, name: str, runways: list, taxiways: list, gates: list):
+    def __init__(self, surface: pygame.Surface, name: str, runways: list, taxiways: list, gates: list[Gate]):
         self.surface = surface
         self.name = name
         self.runways = runways
         self.taxiways = taxiways
         self.gates = gates
-        self.font = pygame.font.SysFont("Helvetica", 12)
+        self.aircraft = []
         self.ground_map = GroundMap()
         self.draw()
+
+    def add_aircraft(self, aircraft):
+        self.aircraft.append(aircraft)
+
+    def update(self, *args):
+        for aircraft in self.aircraft:
+            aircraft.update(*args)
 
     def draw(self):
         length = 700
@@ -61,23 +79,23 @@ class Airport:
         # runways
         self.draw_runway(800, 200, 18)
 
-        self.draw_text("C", 290, 230)
-        self.draw_text("F", 435, 230)
-        self.draw_text("B", 635, 230)
-        self.draw_text("G", 830, 230)
-        self.draw_text("A", 985, 230)
+        draw_text("C", 290, 230, self.surface)
+        draw_text("F", 435, 230, self.surface)
+        draw_text("B", 635, 230, self.surface)
+        draw_text("G", 830, 230, self.surface)
+        draw_text("A", 985, 230, self.surface)
 
-        self.draw_text("E", 350, 263)
-        self.draw_text("E", 530, 263)
-        self.draw_text("E", 750, 263)
-        self.draw_text("E", 930, 263)
+        draw_text("E", 350, 263, self.surface)
+        draw_text("E", 530, 263, self.surface)
+        draw_text("E", 750, 263, self.surface)
+        draw_text("E", 930, 263, self.surface)
 
-        self.draw_text("C", 290, 300)
-        self.draw_text("B", 635, 300)
-        self.draw_text("A", 985, 300)
+        draw_text("C", 290, 300, self.surface)
+        draw_text("B", 635, 300, self.surface)
+        draw_text("A", 985, 300, self.surface)
 
-        self.draw_text("D", 350, 343)
-        self.draw_text("D", 930, 343)
+        draw_text("D", 350, 343, self.surface)
+        draw_text("D", 930, 343, self.surface)
 
         self.ground_map.add_point(Waypoint("rw_exit_c", 295, 200, ["rw_exit_f", "rw_hold_c"]))
         self.ground_map.add_point(Waypoint("rw_exit_f", 455, 200, ["rw_exit_c", "rw_exit_b", "rw_hold_f"]))
@@ -91,15 +109,18 @@ class Airport:
         self.ground_map.add_point(Waypoint("rw_hold_g", 842, 240, ["rw_exit_g", "tw_ge"]))
         self.ground_map.add_point(Waypoint("rw_hold_a", 988, 240, ["rw_exit_a", "tw_ae"]))
 
-        self.ground_map.add_point(Waypoint("tw_ce", 298, 270, ["rw_exit_c", "tw_fe", "tw_cd"]))
-        self.ground_map.add_point(Waypoint("tw_fe", 417, 270, ["rw_exit_f", "tw_ce", "tw_be"]))
-        self.ground_map.add_point(Waypoint("tw_be", 641, 270, ["rw_exit_b", "tw_fe", "tw_ge", "tw_bd"]))
-        self.ground_map.add_point(Waypoint("tw_ge", 864, 270, ["rw_exit_g", "tw_be", "tw_ae"]))
-        self.ground_map.add_point(Waypoint("tw_ae", 987, 270, ["rw_exit_a", "tw_ge", "tw_ad"]))
+        self.ground_map.add_point(Waypoint("tw_ce", 298, 270, ["rw_hold_c", "tw_fe", "tw_cd"]))
+        self.ground_map.add_point(Waypoint("tw_fe", 417, 270, ["rw_hold_f", "tw_ce", "tw_be"]))
+        self.ground_map.add_point(Waypoint("tw_be", 641, 270, ["rw_hold_b", "tw_fe", "tw_ge", "tw_bd"]))
+        self.ground_map.add_point(Waypoint("tw_ge", 864, 270, ["rw_hold_g", "tw_be", "tw_ae"]))
+        self.ground_map.add_point(Waypoint("tw_ae", 987, 270, ["rw_hold_a", "tw_ge", "tw_ad"]))
 
         self.ground_map.add_point(Waypoint("tw_cd", 303, 350, ["tw_ce", "tw_bd"]))
         self.ground_map.add_point(Waypoint("tw_bd", 638, 350, ["tw_cd", "tw_ad", "tw_be"]))
         self.ground_map.add_point(Waypoint("tw_ad", 983, 350, ["tw_bd", "tw_ae"]))
+
+        for gate in self.gates:
+            self.surface.blit(gate.text_box, (gate.x, gate.y))
 
     def draw_corner(self, start_x, start_y, right: bool, top: bool):
         if right and top:
@@ -132,24 +153,32 @@ class Airport:
     def draw_runway(self, length, y_pos, orientation):
         start = (self.surface.get_width() - length) / 2
         pygame.draw.line(self.surface, RUNWAY_COLOR, (start, y_pos), (start + length, y_pos), 20)
-        text = self.draw_text_box("RWY %d" % orientation, angle=90)
+        text = draw_text_box("RWY %d" % orientation, angle=90)
         self.surface.blit(text, (start, y_pos - text.get_height() / 2))
-        text = self.draw_text_box("RWY %d" % (orientation + 18), angle=90)
+        text = draw_text_box("RWY %d" % (orientation + 18), angle=90)
         self.surface.blit(text, (start + length, y_pos - text.get_height() / 2))
 
-    def draw_text_box(self, text: str,
-                      text_color: tuple[int, int, int] = BLACK,
-                      background_color: tuple[int, int, int] = WHITE,
-                      angle: int = 0) -> pygame.Surface:
-        text = self.font.render(text, True, text_color)
-        text = pygame.transform.rotate(text, angle)
-        text_surface = pygame.Surface((text.get_width() + 5, text.get_height() + 5))
-        pygame.draw.rect(text_surface, background_color,
-                         ((0, 0), (text.get_width() + 5, text.get_height() + 5)),
-                         border_radius=5)
-        text_surface.blit(text, (2.5, 2.5))
-        return text_surface
+    def draw_aircraft_status(self, surface: pygame.Surface):
+        offset = 0
+        for aircraft in self.aircraft:
+            draw_text(aircraft.callsign + ": " + str(aircraft.get_status()), 5, self.surface.get_height() - 65 - offset, surface)
+            offset += 20
 
-    def draw_text(self, text: str, x: int, y: int):
-        text = self.draw_text_box(text, WHITE, BLACK)
-        self.surface.blit(text, (x, y))
+
+def draw_text_box(text: str,
+                  text_color: tuple[int, int, int] = BLACK,
+                  background_color: tuple[int, int, int] = WHITE,
+                  angle: int = 0) -> pygame.Surface:
+    font = pygame.font.SysFont("Helvetica", 12)
+    text = font.render(text, True, text_color)
+    text = pygame.transform.rotate(text, angle)
+    text_surface = pygame.Surface((text.get_width() + 5, text.get_height() + 5))
+    pygame.draw.rect(text_surface, background_color,
+                     ((0, 0), (text.get_width() + 5, text.get_height() + 5)),
+                     border_radius=5)
+    text_surface.blit(text, (2.5, 2.5))
+    return text_surface
+
+def draw_text(text: str, x: int, y: int, surface: pygame.Surface):
+    text = draw_text_box(text, WHITE, BLACK)
+    surface.blit(text, (x, y))
