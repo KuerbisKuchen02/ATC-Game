@@ -133,6 +133,10 @@ class Aircraft(pygame.sprite.Sprite):
                 return True
         return False
 
+    def is_outside_game(self, delta=2000) -> bool:
+        return not (-5000 - delta <= self.rect[0] <= self._airport.surface.get_width() + delta
+                and -delta <= self.rect[1] <= self._airport.surface.get_height() + delta)
+
 
 class AiAircraft(Aircraft):
     def __init__(self, callsign: str, position: tuple[float, float], heading: float, altitude: float, speed: float,
@@ -154,6 +158,18 @@ class AiAircraft(Aircraft):
                    Status.PARKED,
                    airport)
 
+    @classmethod
+    def inbound_aircraft(cls, airport: Airport):
+        a = cls(data.get_random_callsign(),
+                   (-5000, 200),
+                   90,
+                   8400,
+                   200,
+                   Status.READY_TO_LAND,
+                   airport)
+        a.altitude = 0
+        return a
+
     def fly_towards(self, position: tuple[float, float] = None):
         if position is None:
             position = self._goal[0]
@@ -167,17 +183,13 @@ class AiAircraft(Aircraft):
             point = ground_map.get_point(point_name)
             self._goal.append((point.x, point.y))
 
-    def set_instruction(self, instruction: Instruction, waypoint: str = None):
+    def set_instruction(self, instruction: Instruction, waypoints: str | list[str]):
         if instruction == Instruction.PUSHBACK and self._status == Status.READY_FOR_PUSHBACK:
             self._turn_towards = False
             self._status = Status.PUSHBACK
             self._goal.append((self._position[0], self._position[1] - 35))
             self._goal.append((self._position[0] + 45, 350))
             self.speed = -20
-        elif instruction == Instruction.TAXI and self._status == Status.READY_FOR_TAXI:
-            self._status = Status.TAXI_RUNWAY
-            self.set_goal(waypoint)
-            self.speed = 20
         elif instruction == Instruction.LINE_UP and self._status == Status.READY_FOR_LINE_UP:
             self._status = Status.LINE_UP
             self._goal.append((self._position[0], self._position[1] - 25))
@@ -185,13 +197,43 @@ class AiAircraft(Aircraft):
             self.speed = 20
         elif instruction == Instruction.TAKEOFF and (self._status == Status.READY_FOR_TAKEOFF or
                                                      self._status == Status.READY_FOR_LINE_UP):
-            self._status = Status.TAKEOFF
             if self._status == Status.READY_FOR_LINE_UP:
                 self._goal.append((self._position[0], self._position[1] - 25))
                 self._goal.append((self._position[0] + 35, 200))
                 self.speed = 20
             waypoint = self._airport.ground_map.get_point("rw_exit_g")
             self._goal.append((waypoint.x, waypoint.y))
+            self._status = Status.TAKEOFF
+        elif instruction == Instruction.TAXI and self._status == Status.READY_FOR_TAXI:
+            self._status = Status.TAXI_RUNWAY
+            prev = ""
+            for point in waypoints:
+                match point:
+                    case 18:
+                        start = "tw_cd"
+                        waypoint = "rw_hold_c"
+                    case "bravo":
+                        start = "tw_bd"
+                        waypoint = "tw_be"
+                    case _:
+                        start = "tw_cd"
+                        waypoint = "tw_ce"
+
+                if len(prev) != 0:
+                    start = prev
+                prev = waypoint
+                points = self._airport.ground_map.get_shortest_path(start, waypoint)
+                for p in points:
+                    wp = self._airport.ground_map.get_point(p)
+                    self._goal.append((wp.x, wp.y))
+            self.speed = 20
+        elif instruction == Instruction.LAND:
+            self._status = Status.LANDING
+            wp = self._airport.ground_map.get_point("rw_exit_g")
+            self._goal.append((wp.x, wp.y))
+            wp = self._airport.ground_map.get_point("rw_hold_g")
+            self._goal.append((wp.x, wp.y))
+
 
     def _check_goal(self):
         if (len(self._goal) > 0
@@ -209,14 +251,14 @@ class AiAircraft(Aircraft):
         # elif self._status == Status.WAIT:
         #     self._status, self.speed = self.backup_state
 
-        if self._turn_towards and len(self._goal) > 0:
+        if self._turn_towards and self._goal:
             self.fly_towards()
         super().update(dt)
 
         if self._check_goal():
             match self._status:
                 case Status.PUSHBACK:
-                    if len(self._goal) > 0:
+                    if self._goal:
                         self.heading = 270
                     else:
                         self.speed = 0
@@ -225,13 +267,17 @@ class AiAircraft(Aircraft):
                 case Status.READY_FOR_TAXI:
                     pass
                 case Status.TAXI_RUNWAY:
-                    if len(self._goal) == 0:
+                    if not self._goal:
                         self.speed = 0
-                        self._status = Status.READY_FOR_TAKEOFF
+                        self._status = Status.READY_FOR_LINE_UP
                 case Status.LINE_UP:
-                    if len(self._goal) == 0:
+                    if not self._goal:
                         self.speed = 0
                         self._status = Status.READY_FOR_TAKEOFF
+                case Status.LANDING:
+                    if not self._goal:
+                        self.speed = 0
+                        self._status = Status.READY_FOR_GATE
 
         if self._status == Status.TAKEOFF:
             if len(self._goal) == 1:
@@ -241,6 +287,21 @@ class AiAircraft(Aircraft):
                 if self._acl_altitude > 200:
                     self.speed = 300
                     self._status = Status.AIRBORNE
+        elif self._status == Status.READY_TO_LAND:
+            if self.rect.x > 0:
+                self._status = Status.GO_AROUND
+                self.altitude = 10000
+                self.speed = 300
+        elif self._status == Status.GO_AROUND:
+            if self.altitude > 1000:
+                self._status = Status.AIRBORNE
+        elif self._status == Status.LANDING:
+            if self._acl_altitude < 10:
+                self.speed = 20
+
+        if self._status in [Status.READY_TO_LAND, Status.LANDING]:
+            if 100 < self._acl_altitude < 2000:
+                self.speed = 160
 
         if self._acl_speed != 0:
             os.system('clear')

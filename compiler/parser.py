@@ -25,14 +25,15 @@ class Parser:
             raise RuntimeError("Parsing exception. Expected EOF, but was %s" % self.lookahead)
         return ret
 
-    def expression(self) -> (str, Instruction):
+    def expression(self):
+        meta = ""
         if self.lookahead.token_type == TokenType.GREETING:
             self.match(TokenType.GREETING)
         callsign = self.exp_start()
         if self.lookahead.token_type == TokenType.GREETING:
             self.match(TokenType.GREETING)
         if self.lookahead.token_type == TokenType.CLEAR:
-            instruction = self.clearance()
+            meta, instruction = self.clearance()
         elif self.lookahead.token_type == TokenType.HOLD:
             self.hold_exp()
             instruction = Instruction.HOLD
@@ -49,11 +50,11 @@ class Parser:
             self.match(TokenType.GO_AROUND)
             instruction = Instruction.GO_AROUND
         elif self.lookahead.token_type == TokenType.TAXI:
-            self.taxi_clr()
+            meta = self.taxi_clr()
             instruction = Instruction.TAXI
         else:
             raise RuntimeError()
-        return callsign, instruction
+        return callsign, instruction, meta
 
     def exp_start(self) -> str:
         ret: str = ""
@@ -71,55 +72,63 @@ class Parser:
         self.match(TokenType.NUMBER)
         return ret
 
-    def clearance(self) -> Instruction:
+    def clearance(self) -> tuple[str, Instruction]:
         self.match(TokenType.CLEAR)
         if self.lookahead.token_type == TokenType.PREPOSITION:
             self.match(TokenType.PREPOSITION)
         if self.lookahead.token_type == TokenType.TAKEOFF:
             self.takeoff_clr()
-            return Instruction.TAKEOFF
+            return "", Instruction.TAKEOFF
         elif self.lookahead.token_type == TokenType.CROSS:
             self.cross_clr()
         elif self.lookahead.token_type == TokenType.LAND:
-            self.landing_clr()
-            return Instruction.LAND
+            return self.landing_clr()
         elif self.lookahead.token_type == TokenType.TAXI:
             self.taxi_clr()
         elif self.lookahead.token_type == TokenType.PUSHBACK:
             self.match(TokenType.PUSHBACK)
-            return Instruction.PUSHBACK
+            return "", Instruction.PUSHBACK
         else:
             raise RuntimeError()
 
     def takeoff_clr(self):
         self.match(TokenType.TAKEOFF)
         self.runway()
-        if self.lookahead.token_type == TokenType.WIND:
-            self.match(TokenType.WIND)
+        # if self.lookahead.token_type == TokenType.WIND:
+        #     self.match(TokenType.WIND)
         # TODO wind
 
     def cross_clr(self):
         self.match(TokenType.CROSS)
         self.runway()
 
-    def landing_clr(self):
+    def landing_clr(self) -> tuple[str, Instruction]:
         self.match(TokenType.LAND)
         if self.lookahead.token_type == TokenType.PREPOSITION:
             self.match(TokenType.PREPOSITION)
-        self.runway()
+        return self.runway(), Instruction.LAND
 
-    def taxi_clr(self):
+    def taxi_clr(self) -> list[str]:
+        points: list[str] = []
+        goal: str = ""
         self.match(TokenType.TAXI)
         if self.lookahead.token_type == TokenType.PREPOSITION:
             self.match(TokenType.PREPOSITION)
         if self.lookahead.token_type == TokenType.RUNWAY:
-            self.runway()
+            goal = self.runway()
         elif self.lookahead.token_type == TokenType.GATE:
             self.match(TokenType.GATE)
+            goal = self.lookahead.value
+            self.match(TokenType.WORD)
+            goal += self.lookahead.value
+            self.match(TokenType.NUMBER)
         if self.lookahead.token_type == TokenType.VIA:
             self.match(TokenType.VIA)
             while self.lookahead.token_type == TokenType.WORD:
                 self.match(TokenType.WORD)
+                points.append(self.lookahead.value)
+        points.append(goal)
+        return points
 
     def hold_exp(self):
         self.match(TokenType.HOLD)
@@ -140,11 +149,13 @@ class Parser:
         self.match(TokenType.LINE_UP)
         if self.lookahead.token_type == TokenType.WAIT:
             self.match(TokenType.WAIT)
-        self.runway()
 
-    def runway(self):
+    def runway(self) -> str:
         if self.lookahead.token_type == TokenType.RUNWAY:
             self.match(TokenType.RUNWAY)
+        runway = self.lookahead.value
         self.match(TokenType.NUMBER)
         if self.lookahead.token_type == TokenType.WORD:
             self.match(TokenType.WORD)
+            runway += self.lookahead.value
+        return runway

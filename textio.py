@@ -35,7 +35,10 @@ class InputBox:
             if self.active:
                 if event.key == pg.K_RETURN:
                     parser = Parser(Lexer(self.text))
-                    self.instructions.put(parser.valid())
+                    try:
+                        self.instructions.put(parser.valid())
+                    except RuntimeError as e:
+                        print("Unknown command", e.args)
                     self.text = ''
                 elif event.key == pg.K_BACKSPACE:
                     self.text = self.text[:-1]

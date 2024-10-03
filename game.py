@@ -22,7 +22,7 @@ def input_handler():
         input_str = r.recognize_google(audio)
         print(input_str)
         parser = Parser(Lexer(input_str))
-        parser.valid()
+        instructions.put(parser.valid())
     except sr.UnknownValueError:
         print("Google Speech Recognition could not understand audio")
     except sr.RequestError as e:
@@ -71,15 +71,16 @@ def game():
     # noinspection PyTypeChecker
     airport.add_aircraft(AiAircraft(
         "LH14",
-        (330, 200),
-        90,
+        (456, 350),
+        270,
         0,
         0,
-        Status.READY_FOR_TAKEOFF,
+        Status.READY_FOR_TAXI,
         airport))
 
     airport.aircraft[0]._status = Status.READY_FOR_PUSHBACK
 
+    airport.add_aircraft(AiAircraft.inbound_aircraft(airport))
 
     input_box = InputBox(0, screen.get_height() - 40, 1000, 40, instructions)
 
@@ -103,13 +104,13 @@ def game():
 
         while instructions.not_empty:
             try:
-                callsign, instruction = instructions.get_nowait()
+                callsign, instruction, meta = instructions.get_nowait()
             except queue.Empty:
                 break
             for a in airport.aircraft:
                 a: AiAircraft
                 if a.callsign == callsign:
-                    a.set_instruction(instruction)
+                    a.set_instruction(instruction, meta)
                     instructions.task_done()
                     break
         input_box.update()
@@ -119,6 +120,8 @@ def game():
         airport.draw_aircraft_status(screen)
         for a in airport.aircraft:
             screen.blit(a.track, (0, 0))
+            if a.is_outside_game():
+                airport.aircraft.remove(a)
         pygame.display.update()
         dt = clock.tick(60) / 1000  # limits FPS to 60
 
