@@ -1,18 +1,20 @@
 import enum
 import math
-import os
+import random
+import threading
 from math import degrees
 
 import pygame
+
 import compiler.data as data
 
 from airport import Airport, Gate
 
-TURN_SPEED = 3  # degree / s
+TURN_SPEED = 10  # degree / s
 VERT_SPEED = 30  # ft / s
 ACCEL = 3  # kt / s
 
-TAXI_SPEED = 15  # kt
+TAXI_SPEED = 20  # kt
 TAXI_TURN_SPEED = 2  # kt
 
 MIN_CLEAR_TO_LAND_HEIGHT = 50  # ft
@@ -64,6 +66,9 @@ class Aircraft(pygame.sprite.Sprite):
 
     def get_status(self) -> Status:
         return self._status
+
+    def is_landing(self) -> bool:
+        return self._status in (Status.LANDING, Status.READY_TO_LAND)
 
     def fly_towards(self, position: tuple[float, float]):
         self.heading = self._get_heading(position)
@@ -125,7 +130,7 @@ class Aircraft(pygame.sprite.Sprite):
     def is_colliding(self, delta=0) -> bool:
         for a in self._airport.aircraft:
             a: Aircraft
-            if self.callsign == a.callsign:
+            if self.callsign == a.callsign or a._status.PARKED:
                 continue
             if ((a.rect.x - delta) <= self.rect[0] <= (a.rect.x + a.rect.w + delta)
                     and (a.rect.y - delta) <= self.rect[1] <= (a.rect.y + a.rect.h + delta)):
@@ -146,16 +151,18 @@ class AiAircraft(Aircraft):
         self.track = pygame.Surface(pygame.display.get_surface().get_size())
         self.track.set_colorkey((0, 0, 0))
         self._turn_towards = True
+        self.timer: threading.Timer | None = None
 
     @classmethod
     def parked_aircraft(cls, airport: Airport, gate: Gate):
-        return cls(data.get_random_callsign(),
+        aircraft = cls(data.get_random_callsign(),
                    gate.get_spawn_point(),
                    180,
                    0,
                    0,
                    Status.PARKED,
                    airport)
+        return aircraft
 
     @classmethod
     def inbound_aircraft(cls, airport: Airport):
@@ -168,6 +175,17 @@ class AiAircraft(Aircraft):
                    airport)
         a.altitude = 0
         return a
+
+    def start_boarding(self, a = 60, b = 180):
+        if self.timer and self.timer.is_alive():
+            raise RuntimeError("Boarding already started!")
+        t = random.randint(a, b)
+        print("Boarding aircraft for {} sec".format(t))
+        self.timer = threading.Timer(t, self.boarding_complete_handler)
+        self.timer.start()
+
+    def boarding_complete_handler(self):
+        self._status = Status.READY_FOR_PUSHBACK
 
     def fly_towards(self, position: tuple[float, float] = None):
         if position is None:
@@ -186,7 +204,7 @@ class AiAircraft(Aircraft):
         if instruction == Instruction.PUSHBACK and self._status == Status.READY_FOR_PUSHBACK:
             self._turn_towards = False
             self._status = Status.PUSHBACK
-            self._goal.append((self._position[0], self._position[1] - 35))
+            self._goal.append((self._position[0], self._position[1] - 50))
             self._goal.append((self._position[0] + 45, 350))
             self.speed = -20
         elif instruction == Instruction.LINE_UP and self._status == Status.READY_FOR_LINE_UP:
@@ -265,12 +283,12 @@ class AiAircraft(Aircraft):
         return False
 
     def update(self, dt: float):
-        # if self.is_colliding(20):
-        #     self.backup_state = (self._status, self.speed)
-        #     self.speed = 0
-        #     self._status = Status.WAIT
-        # elif self._status == Status.WAIT:
-        #     self._status, self.speed = self.backup_state
+        if self._status in [Status.TAXI_RUNWAY, Status.TAXI_GATE] and self.is_colliding(20):
+            self.backup_state = (self._status, self.speed)
+            self.speed = 0
+            self._status = Status.WAIT
+        elif self._status == Status.WAIT and not self.is_colliding(20):
+            self._status, self.speed = self.backup_state
 
         if self._turn_towards and self._goal:
             self.fly_towards()
@@ -295,6 +313,7 @@ class AiAircraft(Aircraft):
                     if not self._goal:
                         self.speed = 0
                         self._status = Status.PARKED
+                        self.start_boarding()
                 case Status.LINE_UP:
                     if not self._goal:
                         self.speed = 0
@@ -327,17 +346,6 @@ class AiAircraft(Aircraft):
         if self._status in [Status.READY_TO_LAND, Status.LANDING]:
             if 100 < self._acl_altitude < 2000:
                 self.speed = 160
-
-        if self._acl_speed != 0:
-            os.system('clear')
-            print("Aircraft data")
-            print("Heading %d; Actually %d" % (self.heading, self._acl_heading))
-            print("Speed %d; Actually %d" % (self.speed, self._acl_speed))
-            print("Altitude %d; Actually %d" % (self.altitude, self._acl_altitude))
-            print("Position X:%d, Y:%d" % (self._position[0], self._position[1]))
-            print("Goal X:%d, Goal Y:%d" % (self._goal[0][0], self._goal[0][1]) if len(self._goal) > 0
-                  else "Goal None")
-            print("Status: %s ; Instruction: %s" % (self._status, self._instruction))
 
         self.track = pygame.Surface(pygame.display.get_surface().get_size())
         self.track.set_colorkey((0, 0, 0))

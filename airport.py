@@ -38,6 +38,13 @@ class Airport:
     def add_aircraft(self, aircraft):
         self.aircraft.append(aircraft)
 
+    def number_of_landing_aircraft(self):
+        cnt = 0
+        for aircraft in self.aircraft:
+            if aircraft.is_landing():
+                cnt += 1
+        return cnt
+
     def update(self, *args):
         for aircraft in self.aircraft:
             aircraft.update(*args)

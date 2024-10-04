@@ -1,3 +1,5 @@
+import re
+
 import pygame as pg
 import queue
 
@@ -34,7 +36,7 @@ class InputBox:
         if event.type == pg.KEYDOWN:
             if self.active:
                 if event.key == pg.K_RETURN:
-                    parser = Parser(Lexer(self.text))
+                    parser = Parser(Lexer(re.sub(r"([a-zA-Z]+)(\d+)", r"\1 \2", self.text)))
                     try:
                         self.instructions.put(parser.valid())
                     except RuntimeError as e:

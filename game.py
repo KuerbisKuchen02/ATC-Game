@@ -1,16 +1,21 @@
 import pygame
 import threading
 import queue
+import random
+import re
 
 import speech_recognition as sr
 
-from aircraft import AiAircraft, Status
-from airport import Airport, Gate
+from aircraft import AiAircraft
+from airport import Airport
 from compiler.lexer import Lexer
 from compiler.parser import Parser
 from textio import InputBox
 
 instructions = queue.Queue()
+
+timers = []
+boarding_timer: threading.Timer | None = None
 
 
 def input_handler():
@@ -26,14 +31,26 @@ def input_handler():
     except sr.UnknownValueError:
         print("Google Speech Recognition could not understand audio")
     except sr.RequestError as e:
-        print("Could not request results from Google Speech Recognition service; {0}".format(e))
+        print("Could not request results from Google Speech Recognition service; {}".format(e))
 
 
 def text_input_handler():
     input_str = input("Command: ")
+    input_str = re.sub(r"([a-zA-Z]+)(\d+)", "%1 %2", input_str)
     parser = Parser(Lexer(input_str))
     instructions.put(parser.valid())
 
+
+def start_boarding(airport: Airport):
+    global boarding_timer
+    for aircraft in airport.aircraft:
+        if aircraft.timer is None:
+            aircraft.start_boarding(1, 60)
+            break
+
+    if boarding_timer and not boarding_timer.is_alive():
+        boarding_timer = threading.Timer(180, start_boarding, args=(airport,))
+        boarding_timer.start()
 
 def game():
     # pygame setup
@@ -45,30 +62,14 @@ def game():
     background = background.convert()
     background.fill((40, 40, 40))
 
-
-
     airport = Airport(background, "Rocky Mountain Regional")
+
+    for gate in airport.gates:
+        airport.add_aircraft(AiAircraft.parked_aircraft(airport, gate))
 
     font = pygame.font.SysFont("Helvetica", 36)
     font_object = font.render("Rocky Mountain Regional", True, (255, 255, 255))
     background.blit(font_object, (50, 50))
-
-    for gate in airport.gates:
-        airport.add_aircraft(AiAircraft.parked_aircraft(airport, gate))
-    # noinspection PyTypeChecker
-    airport.add_aircraft(AiAircraft(
-        "LH14",
-        (842, 240),
-        146,
-        0,
-        0,
-        Status.READY_FOR_GATE,
-        airport))
-
-    airport.aircraft[0]._status = Status.READY_FOR_PUSHBACK
-
-    # airport.add_aircraft(AiAircraft.inbound_aircraft(airport))
-    airport.ground_map.draw(background)
 
     input_box = InputBox(0, screen.get_height() - 40, 1000, 40, instructions)
 
@@ -76,18 +77,43 @@ def game():
     running = True
     dt = 0
 
+    start_boarding(airport)
+    start_boarding(airport)
+    start_boarding(airport)
+    global boarding_timer
+    boarding_timer = threading.Timer(180, start_boarding, args=(airport,))
+    boarding_timer.start()
+
     screen.blit(background, (0, 0))
     pygame.display.update()
 
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                for timer in timers:
+                    timer.cancel()
+                for aircraft in airport.aircraft:
+                    if aircraft.timer:
+                        aircraft.timer.cancel()
                 running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_m and not input_box.active:
                 threading.Thread(target=input_handler, daemon=True).start()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_n and not input_box.active:
                 threading.Thread(target=text_input_handler, daemon=True).start()
             input_box.handle_event(event)
+
+        for timer in timers:
+            if not timer.is_alive():
+                timers.remove(timer)
+
+        if (len(airport.gates) > len(airport.aircraft) + len(timers)
+                and airport.number_of_landing_aircraft() < 3
+                and len(timers) < 3):
+            t = random.randint(1, 60)
+            print("Started timer for {} sec...".format(t))
+            timer = threading.Timer(t, airport.add_aircraft, [AiAircraft.inbound_aircraft(airport)])
+            timers.append(timer)
+            timer.start()
 
         while instructions.not_empty:
             try:
