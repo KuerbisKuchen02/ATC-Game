@@ -25,12 +25,12 @@ class Gate:
 
 
 class Airport:
-    def __init__(self, surface: pygame.Surface, name: str, runways: list, taxiways: list, gates: list[Gate]):
+    def __init__(self, surface: pygame.Surface, name: str):
         self.surface = surface
         self.name = name
-        self.runways = runways
-        self.taxiways = taxiways
-        self.gates = gates
+        self.runways = []
+        self.taxiways = []
+        self.gates = []
         self.aircraft = []
         self.ground_map = GroundMap()
         self.draw()
@@ -97,10 +97,27 @@ class Airport:
         draw_text("D", 350, 343, self.surface)
         draw_text("D", 930, 343, self.surface)
 
+        self.gates = [Gate(400, 410, "B1"),
+                      Gate(430, 410, "B2"),
+                      Gate(460, 410, "B3"),
+                      Gate(490, 410, "B4"),
+                      Gate(520, 410, "B5"),
+                      Gate(550, 410, "B6"),
+                      Gate(580, 410, "B7"),
+                      Gate(700, 410, "A1"),
+                      Gate(730, 410, "A2"),
+                      Gate(760, 410, "A3"),
+                      Gate(790, 410, "A4"),
+                      Gate(820, 410, "A5"),
+                      Gate(850, 410, "A6"), ]
+
+        for gate in self.gates:
+            self.surface.blit(gate.text_box, (gate.x, gate.y))
+
         self.ground_map.add_point(Waypoint("rw_exit_c", 295, 200, ["rw_exit_f", "rw_hold_c"]))
         self.ground_map.add_point(Waypoint("rw_exit_f", 455, 200, ["rw_exit_c", "rw_exit_b", "rw_hold_f"]))
         self.ground_map.add_point(Waypoint("rw_exit_b", 638, 200, ["rw_exit_f", "rw_exit_g", "rw_hold_b"]))
-        self.ground_map.add_point(Waypoint("rw_exit_g", 824, 200, ["rw_exit_b", "rw_exit_a", "rw_hold_g"]))
+        self.ground_map.add_point(Waypoint("rw_exit_g", 810, 200, ["rw_exit_b", "rw_exit_a", "rw_hold_g"]))
         self.ground_map.add_point(Waypoint("rw_exit_a", 988, 200, ["rw_exit_g", "rw_hold_a"]))
 
         self.ground_map.add_point(Waypoint("rw_hold_c", 295, 240, ["rw_exit_c", "tw_ce"]))
@@ -120,7 +137,13 @@ class Airport:
         self.ground_map.add_point(Waypoint("tw_ad", 983, 350, ["tw_bd", "tw_ae"]))
 
         for gate in self.gates:
-            self.surface.blit(gate.text_box, (gate.x, gate.y))
+            name = "gate-{}".format(gate.name.lower())
+            if "a" in gate.name.lower():
+                self.ground_map.add_point(Waypoint(name, gate.x + 23, gate.y - 58, ["tw_ad"]))
+                self.ground_map.get_point("tw_ad").connected_points.append(name)
+            else:
+                self.ground_map.add_point(Waypoint(name, gate.x + 23, gate.y - 58, ["tw_bd"]))
+                self.ground_map.get_point("tw_bd").connected_points.append(name)
 
     def draw_corner(self, start_x, start_y, right: bool, top: bool):
         if right and top:
@@ -130,7 +153,7 @@ class Airport:
         elif not right and top:
             pygame.draw.arc(self.surface, TAXI_COLOR,
                             (start_x - 42, start_y - 24, 50, 50),
-                            3 * math.pi / 2,  2 * math.pi, 15)
+                            3 * math.pi / 2, 2 * math.pi, 15)
         elif right and not top:
             pygame.draw.arc(self.surface, TAXI_COLOR,
                             (start_x - 7, start_y - 7, 50, 50),
@@ -161,7 +184,8 @@ class Airport:
     def draw_aircraft_status(self, surface: pygame.Surface):
         offset = 0
         for aircraft in self.aircraft:
-            draw_text(aircraft.callsign + ": " + str(aircraft.get_status()), 5, self.surface.get_height() - 65 - offset, surface)
+            draw_text(aircraft.callsign + ": " + str(aircraft.get_status()), 5, self.surface.get_height() - 65 - offset,
+                      surface)
             offset += 20
 
 
@@ -178,6 +202,7 @@ def draw_text_box(text: str,
                      border_radius=5)
     text_surface.blit(text, (2.5, 2.5))
     return text_surface
+
 
 def draw_text(text: str, x: int, y: int, surface: pygame.Surface):
     text = draw_text_box(text, WHITE, BLACK)

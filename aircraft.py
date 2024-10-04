@@ -5,7 +5,6 @@ from math import degrees
 
 import pygame
 import compiler.data as data
-import ground_map
 
 from airport import Airport, Gate
 
@@ -176,11 +175,11 @@ class AiAircraft(Aircraft):
         super().fly_towards(position)
 
     def set_goal(self, waypoint: str):
-        ground_map = self._airport.ground_map
-        closest_point = ground_map.find_closest(self._position)
-        path = ground_map.get_shortest_path(closest_point, waypoint)
+        gmap = self._airport.ground_map
+        closest_point = gmap.find_closest(self._position)
+        path = gmap.get_shortest_path(closest_point, waypoint)
         for point_name in path:
-            point = ground_map.get_point(point_name)
+            point = gmap.get_point(point_name)
             self._goal.append((point.x, point.y))
 
     def set_instruction(self, instruction: Instruction, waypoints: str | list[str]):
@@ -218,22 +217,44 @@ class AiAircraft(Aircraft):
                     case _:
                         start = "tw_cd"
                         waypoint = "tw_ce"
-
-                if len(prev) != 0:
-                    start = prev
-                prev = waypoint
-                points = self._airport.ground_map.get_shortest_path(start, waypoint)
-                for p in points:
-                    wp = self._airport.ground_map.get_point(p)
-                    self._goal.append((wp.x, wp.y))
+                prev = self.add_points(start, waypoint, prev)
             self.speed = 20
-        elif instruction == Instruction.LAND:
+        elif instruction == Instruction.TAXI and self._status == Status.READY_FOR_GATE:
+            self._status = Status.TAXI_GATE
+            prev = ""
+            gate = ""
+            for point in waypoints:
+                match point:
+                    case "alpha":
+                        start = "rw_hold_g"
+                        waypoint = "tw_ad"
+                    case "bravo":
+                        start = "rw_hold_g"
+                        waypoint = "tw_bd"
+                    case _:
+                        start = "rw_hold_g"
+                        gate = waypoint = "gate-{}".format(point)
+                prev = self.add_points(start, waypoint, prev)
+            g = self._airport.ground_map.get_point(gate)
+            self._goal.append((g.x - 13, g.y + 47))
+            self.speed = 20
+
+        elif instruction == Instruction.LAND and self._status == Status.READY_TO_LAND:
             self._status = Status.LANDING
             wp = self._airport.ground_map.get_point("rw_exit_g")
             self._goal.append((wp.x, wp.y))
             wp = self._airport.ground_map.get_point("rw_hold_g")
             self._goal.append((wp.x, wp.y))
 
+    def add_points(self, start, end, prev):
+        if prev:
+            start = prev
+        prev = end
+        points = self._airport.ground_map.get_shortest_path(start, end)
+        for p in points:
+            wp = self._airport.ground_map.get_point(p)
+            self._goal.append((wp.x, wp.y))
+        return prev
 
     def _check_goal(self):
         if (len(self._goal) > 0
@@ -270,6 +291,10 @@ class AiAircraft(Aircraft):
                     if not self._goal:
                         self.speed = 0
                         self._status = Status.READY_FOR_LINE_UP
+                case Status.TAXI_GATE:
+                    if not self._goal:
+                        self.speed = 0
+                        self._status = Status.PARKED
                 case Status.LINE_UP:
                     if not self._goal:
                         self.speed = 0

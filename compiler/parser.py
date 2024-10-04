@@ -118,15 +118,15 @@ class Parser:
             goal = self.runway()
         elif self.lookahead.token_type == TokenType.GATE:
             self.match(TokenType.GATE)
-            goal = self.lookahead.value
+            goal = self.lookahead.value.lower()[:1]
             self.match(TokenType.WORD)
-            goal += self.lookahead.value
+            goal += str(self.lookahead.value)
             self.match(TokenType.NUMBER)
         if self.lookahead.token_type == TokenType.VIA:
             self.match(TokenType.VIA)
             while self.lookahead.token_type == TokenType.WORD:
-                self.match(TokenType.WORD)
                 points.append(self.lookahead.value)
+                self.match(TokenType.WORD)
         points.append(goal)
         return points
 

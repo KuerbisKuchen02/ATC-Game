@@ -45,46 +45,33 @@ def game():
     background = background.convert()
     background.fill((40, 40, 40))
 
-    gates = [Gate(400, 410, "B1"),
-             Gate(430, 410, "B2"),
-             Gate(460, 410, "B3"),
-             Gate(490, 410, "B4"),
-             Gate(520, 410, "B5"),
-             Gate(550, 410, "B6"),
-             Gate(580, 410, "B7"),
-             Gate(700, 410, "A1"),
-             Gate(730, 410, "A2"),
-             Gate(760, 410, "A3"),
-             Gate(790, 410, "A4"),
-             Gate(820, 410, "A5"),
-             Gate(850, 410, "A6"),]
 
-    airport = Airport(background, "Rocky Mountain Regional", [], [], gates)
-    # airport.ground_map.draw(background)
+
+    airport = Airport(background, "Rocky Mountain Regional")
 
     font = pygame.font.SysFont("Helvetica", 36)
     font_object = font.render("Rocky Mountain Regional", True, (255, 255, 255))
     background.blit(font_object, (50, 50))
 
-    for gate in gates:
+    for gate in airport.gates:
         airport.add_aircraft(AiAircraft.parked_aircraft(airport, gate))
     # noinspection PyTypeChecker
     airport.add_aircraft(AiAircraft(
         "LH14",
-        (456, 350),
-        270,
+        (842, 240),
+        146,
         0,
         0,
-        Status.READY_FOR_TAXI,
+        Status.READY_FOR_GATE,
         airport))
 
     airport.aircraft[0]._status = Status.READY_FOR_PUSHBACK
 
-    airport.add_aircraft(AiAircraft.inbound_aircraft(airport))
+    # airport.add_aircraft(AiAircraft.inbound_aircraft(airport))
+    airport.ground_map.draw(background)
 
     input_box = InputBox(0, screen.get_height() - 40, 1000, 40, instructions)
 
-    #airport.aircraft[0].set_instruction(Instruction.TAXI, "rw_hold_a")
     clock = pygame.time.Clock()
     running = True
     dt = 0
