@@ -130,7 +130,7 @@ class Aircraft(pygame.sprite.Sprite):
     def is_colliding(self, delta=0) -> bool:
         for a in self._airport.aircraft:
             a: Aircraft
-            if self.callsign == a.callsign or a._status.PARKED:
+            if self.callsign == a.callsign or a._status == Status.PARKED:
                 continue
             if ((a.rect.x - delta) <= self.rect[0] <= (a.rect.x + a.rect.w + delta)
                     and (a.rect.y - delta) <= self.rect[1] <= (a.rect.y + a.rect.h + delta)):

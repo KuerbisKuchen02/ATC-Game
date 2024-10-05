@@ -146,10 +146,10 @@ class Airport:
         for gate in self.gates:
             name = "gate-{}".format(gate.name.lower())
             if "a" in gate.name.lower():
-                self.ground_map.add_point(Waypoint(name, gate.x + 23, gate.y - 58, ["tw_ad"]))
+                self.ground_map.add_point(Waypoint(name, gate.x + 18, gate.y - 58, ["tw_ad"]))
                 self.ground_map.get_point("tw_ad").connected_points.append(name)
             else:
-                self.ground_map.add_point(Waypoint(name, gate.x + 23, gate.y - 58, ["tw_bd"]))
+                self.ground_map.add_point(Waypoint(name, gate.x + 18, gate.y - 58, ["tw_bd"]))
                 self.ground_map.get_point("tw_bd").connected_points.append(name)
 
     def draw_corner(self, start_x, start_y, right: bool, top: bool):
