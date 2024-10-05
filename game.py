@@ -13,6 +13,8 @@ from compiler.parser import Parser
 from textio import InputBox
 
 instructions = queue.Queue()
+inbound = queue.Queue()
+inbound_timer: threading.Timer | None = None
 
 timers = []
 boarding_timer: threading.Timer | None = None
@@ -51,6 +53,23 @@ def start_boarding(airport: Airport):
     if boarding_timer and not boarding_timer.is_alive():
         boarding_timer = threading.Timer(180, start_boarding, args=(airport,))
         boarding_timer.start()
+
+def handle_inbound(airport: Airport):
+    global inbound
+    global inbound_timer
+    if not inbound.empty():
+        inbound.get(timeout=5)
+        airport.add_aircraft(AiAircraft.inbound_aircraft(airport))
+        inbound_timer = threading.Timer(20, handle_inbound, args=(airport,))
+        inbound_timer.start()
+        inbound.task_done()
+
+def handle_inbound_queue(airport: Airport):
+    global inbound
+    global inbound_timer
+    inbound.put(airport)
+    if not inbound_timer or not inbound_timer.is_alive():
+        handle_inbound(airport)
 
 def game():
     # pygame setup
@@ -111,7 +130,7 @@ def game():
                 and len(timers) < 3):
             t = random.randint(1, 60)
             print("Started timer for {} sec...".format(t))
-            timer = threading.Timer(t, airport.add_aircraft, [AiAircraft.inbound_aircraft(airport)])
+            timer = threading.Timer(t, handle_inbound_queue, (airport,))
             timers.append(timer)
             timer.start()
 
